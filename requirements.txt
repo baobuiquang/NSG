@@ -7,3 +7,5 @@ gradio
 opencv-python-headless
 matplotlib
 pillow
+
+onnxruntime

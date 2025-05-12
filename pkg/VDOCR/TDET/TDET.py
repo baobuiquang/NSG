@@ -285,7 +285,7 @@ def Process_TDET(img_ocv):
         # Return
         tables_cells.append(table_cells)
 
-    # # ---------------------------------------------------------------------------------------------------- Just to visualize
+    # # # ---------------------------------------------------------------------------------------------------- Just to visualize
     # from pkg.UTILS.UTILS import show_ocv_multiple
     # # lsd_lines
     # img_tmp_1 = img_ocv.copy()
@@ -312,6 +312,6 @@ def Process_TDET(img_ocv):
     # # show_ocv_multiple
     # show_ocv_multiple([img_ocv, img_bin, img_bin_h, img_bin_v], ["img_ocv", "img_bin", "img_bin_h", "img_bin_v"])
     # show_ocv_multiple([img_tmp_1, img_tmp_2, img_tmp_3, img_tmp_4], ["lsd_lines", "merged_lsd_lines", "tables_lines, tables_intersects, in_between_points", "tables_cells"])
-
-    # ----------------------------------------------------------------------------------------------------
+    # # # ----------------------------------------------------------------------------------------------------
+    
     return table_cells
