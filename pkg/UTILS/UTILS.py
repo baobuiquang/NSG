@@ -1,13 +1,20 @@
+# ====================================================================================================
+# ====================================================================================================
+# ====================================================================================================
+
+# String -> List/Dict/Tuple/etc
 def str2pydata(s):
     import ast
     return ast.literal_eval(s)
 
+# JSON File -> Dict
 def jsonfile2dict(pth):
     import json
     with open(pth, 'r', encoding='utf-8') as f:
         data = json.load(f)
     return data
 
+# String -> Dict (Advanced)
 # Extract the JSON dictionary from LLM string result, return None if cannot extract
 def str2dict_advanced(s):
     start = s.find('{')
@@ -22,13 +29,16 @@ def str2dict_advanced(s):
         else:
             return None
 
-# Beautify for print
+# List -> String (Beautify for print)
+def list2str(l):
+    return "\n".join([str(e) for e in l])
+# Dict -> String (Beautify for print)
 def dict2str(d):
     import json
     return json.dumps(d, indent=4, ensure_ascii=False)
-def list2str(l):
-    return "\n".join([str(e) for e in l])
 
+# ====================================================================================================
+# ====================================================================================================
 # ====================================================================================================
 
 def pil_2_ocv(img):
@@ -130,3 +140,7 @@ def preprocess_document_image(img_ocv):
     img_ocv = prepimg_cropblank(img_ocv)
     img_ocv = prepimg_resize(img_ocv, width=1080)
     return img_ocv
+
+# ====================================================================================================
+# ====================================================================================================
+# ====================================================================================================

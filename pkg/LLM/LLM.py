@@ -6,6 +6,29 @@
 #     sys.path.append(p) if p not in sys.path else None
 # activate_pkg()
 
+# ====================================================================================================
+# ====================================================================================================
+# ====================================================================================================
+
+# LLM - Large-Language-Model Processing
+
+# ----- Usage -----
+# from pkg.LLM.LLM import Process_LLM, Process_LLM_Stream
+# # prompt = string
+# prompt = "Bạn tên gì? Bạn được huấn luyện bởi ai?"
+# print(Process_LLM(prompt))
+# # prompt = list
+# prompt = [ { "role": "user", "content": "Bạn tên gì? Bạn được huấn luyện bởi ai?" } ]
+# print(Process_LLM(prompt))
+# # prompt = list - streaming
+# prompt = [ { "role": "user", "content": "Bạn tên gì? Bạn được huấn luyện bởi ai?" } ]
+# for chunk in Process_LLM_Stream(prompt):
+#     print(chunk)
+
+# ====================================================================================================
+# ====================================================================================================
+# ====================================================================================================
+
 DEFAULT_VENDOR = "openrouter"
 
 import pkg.UTILS.UTILS as UTILS
@@ -118,12 +141,3 @@ def Process_LLM_Stream(prompt, history=[]):
 # ====================================================================================================
 # ====================================================================================================
 # ====================================================================================================
-
-# from pkg.LLM.LLM import Process_LLM
-# Process_LLM("Tên bạn là gì?")
-
-# prompt = "1 + 2 bằng bao nhiêu? Hãy giải thích."
-# prompt = [ { "role": "user", "content": "1 + 2 bằng bao nhiêu? Hãy giải thích." } ]
-# Process_LLM(prompt)
-# for chunk in Process_LLM_Stream(prompt):
-#     print(chunk)
