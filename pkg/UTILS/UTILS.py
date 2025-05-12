@@ -2,6 +2,30 @@
 # ====================================================================================================
 # ====================================================================================================
 
+# Folder path -> All relative file paths
+def get_all_filepaths(folderpath, extensions=[]):
+    import os
+    file_paths = []
+    for root, dirs, files in os.walk(folderpath):
+        for file_name in files:
+            full_path = os.path.join(root, file_name)
+            extension = os.path.splitext(full_path)[1].lstrip('.')
+            if len(extensions) == 0 or extension in extensions:
+                file_paths.append(full_path)
+    return file_paths
+
+# File path: '_test\\dir1\\subdir\\img_0.jpg' -> {'directory': '_test\\dir1\\subdir', 'filename': 'img_0', 'extension': 'jpg'}
+def split_filepath(filepath):
+    import os
+    directory, file_with_ext = os.path.split(filepath)
+    filename, extension = os.path.splitext(file_with_ext)
+    extension = extension.lstrip('.')
+    return {"directory": directory, "filename": filename, "extension": extension}
+
+# ====================================================================================================
+# ====================================================================================================
+# ====================================================================================================
+
 # String -> List/Dict/Tuple/etc
 def str2pydata(s):
     import ast
