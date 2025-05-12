@@ -3,3 +3,7 @@ ipywidgets
 
 requests
 gradio
+
+opencv-python-headless
+matplotlib
+pillow
