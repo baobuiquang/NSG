@@ -8,11 +8,9 @@
 
 DEFAULT_VENDOR = "openrouter"
 
+import pkg.UTILS.UTILS as UTILS
 import requests
 import json
-import ast
-def str2whatitpresent(s):
-    return ast.literal_eval(s)
 
 KEY_OPENROUTER = "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"
 KEY_DEEPINFRA  = "rD6SaD8vai3LxvehBVTyvq2djEjCIzGQ"
@@ -22,7 +20,7 @@ URL_OPENROUTER = "https://openrouter.ai/api/v1/chat/completions"
 URL_DEEPINFRA  = "https://api.deepinfra.com/v1/openai/chat/completions"
 URL_OLLAMA     = "http://localhost:11434/v1/chat/completions"
 URL_VNPT       = "http://192.168.80.99:11434/v1/chat/completions"
-MDL_OPENROUTER = "qwen/qwen3-32b" # "qwen/qwen-2.5-7b-instruct"
+MDL_OPENROUTER = "google/gemini-2.0-flash-001" # "qwen/qwen-2.5-7b-instruct" # "qwen/qwen3-32b"
 MDL_DEEPINFRA  = "Qwen/Qwen2.5-7B-Instruct"
 MDL_OLLAMA     = "qwen2.5:7b-instruct-q4_K_M"
 MDL_VNPT       = "mygemma:12b" # "gemma3:12b" / "gemma3:12b-it-qat"
@@ -72,7 +70,7 @@ class RequestInput:
                 self.payload = {
                     "stream": stream,
                     "model": LLM_API_MDL,
-                    "messages": str2whatitpresent(prompt)
+                    "messages": UTILS.str2pydata(prompt)
                 }
         elif isinstance(prompt, list):                                    # Case 2: prompt is a history (a list)
             self.payload = {
