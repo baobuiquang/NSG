@@ -177,7 +177,7 @@ POCR_DET = POCR_Detection(onnx_path='pkg/VDOCR/POCR/model/det_infer.onnx')
 # POCR_DET = POCR_Detection(onnx_path='pkg/VDOCR/POCR/model/ch_PP-OCRv2_det_infer.onnx')
 # POCR_DET = POCR_Detection(onnx_path='pkg/VDOCR/POCR/model/en_PP-OCRv3_det_infer.onnx')
 
-def Process_POCR(img_path, padding_ratio=0.3):
+def Process_POCR(img_path, padding_ratio=0.2):
 
     # Convert to OpenCV image
     if isinstance(img_path, str):             img_ocv = cv2.imread(img_path)

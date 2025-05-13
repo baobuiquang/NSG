@@ -284,6 +284,14 @@ def Process_TDET(img_ocv):
                 table_cells[i]['col_span'] = 1
         # Return
         tables_cells.append(table_cells)
+    
+    # JUST re-calculate the "merge_down" and "merge_right" in tables_cells
+    for tblcells in tables_cells:
+        for cell in tblcells:
+            if cell['row_span'] > 1: cell['merge_down'] = True
+            else: cell['merge_down'] = False
+            if cell['col_span'] > 1: cell['merge_right'] = True
+            else: cell['merge_right'] = False
 
     # # # ---------------------------------------------------------------------------------------------------- Just to visualize
     # from pkg.UTILS.UTILS import show_ocv_multiple
@@ -314,4 +322,4 @@ def Process_TDET(img_ocv):
     # show_ocv_multiple([img_tmp_1, img_tmp_2, img_tmp_3, img_tmp_4], ["lsd_lines", "merged_lsd_lines", "tables_lines, tables_intersects, in_between_points", "tables_cells"])
     # # # ----------------------------------------------------------------------------------------------------
     
-    return table_cells
+    return tables_cells
