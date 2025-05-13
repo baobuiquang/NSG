@@ -85,13 +85,15 @@ Nếu bạn không hiểu yêu cầu của người dùng, chỉ cần trả v�
 import gradio as gr
 
 theme = gr.themes.Base(
-    primary_hue="neutral", secondary_hue="neutral", neutral_hue="neutral",
+    primary_hue="teal", secondary_hue="neutral", neutral_hue="neutral",
     font=[gr.themes.GoogleFont('Inter')], font_mono=[gr.themes.GoogleFont('Ubuntu Mono')]
 )
 head = """
 <link rel="icon" href="https://cdn.jsdelivr.net/gh/OneLevelStudio/CORE/static/favicon.png">
 """
 css = """
+* { -ms-overflow-style: none; scrollbar-width: none; }
+*::-webkit-scrollbar { display: none; }
 footer { display: none !important; }
 """
 
@@ -125,9 +127,10 @@ def scan_jsonapi(gr_jsonapi):
 def fn_upload_1(gr_history, gr_uploaded_file):
     gr_history += [{"role": "user", "content": gr.File(gr_uploaded_file)}]
     # ---------- Just turn file into image preview
-    gr_file_preview = None
+    gr_file_preview_1 = None
+    gr_file_preview_2 = None
     if UTILS.split_filepath(gr_uploaded_file)['extension'] in UTILS.FILE_EXTENSION_IMG:
-        gr_file_preview = gr_uploaded_file
+        gr_file_preview_1 = gr.Image(gr_uploaded_file, visible=True)
     elif UTILS.split_filepath(gr_uploaded_file)['extension'] in UTILS.FILE_EXTENSION_PDF:
         from pymupdf import Document as Document_Parser_PDF
         PDF2IMG_ZOOM = 4.0
@@ -137,15 +140,11 @@ def fn_upload_1(gr_history, gr_uploaded_file):
             else:
                 page = PDF_document[0]
                 img_ocv = UTILS.pil_2_ocv(page.get_pixmap(dpi=int(72*PDF2IMG_ZOOM)).pil_image())
-        gr_file_preview = img_ocv
-    elif UTILS.split_filepath(gr_uploaded_file)['extension'] in UTILS.FILE_EXTENSION_TXT:
-        gr_file_preview = None
-    elif UTILS.split_filepath(gr_uploaded_file)['extension'] in UTILS.FILE_EXTENSION_DOC:
-        gr_file_preview = None
-    elif UTILS.split_filepath(gr_uploaded_file)['extension'] in UTILS.FILE_EXTENSION_XLS:
-        gr_file_preview = None
+        gr_file_preview_1 = gr.Image(img_ocv, visible=True)
+    elif UTILS.split_filepath(gr_uploaded_file)['extension'] in UTILS.FILE_EXTENSION_TXT + UTILS.FILE_EXTENSION_DOC + UTILS.FILE_EXTENSION_XLS:
+        gr_file_preview_2 = gr.TextArea(Process_VDOCR(gr_uploaded_file), visible=True)
     # ---------- 
-    return gr_history, gr_file_preview
+    return gr_history, gr_file_preview_1, gr_file_preview_2
 
 def fn_upload_2(gr_history, gr_uploaded_file):
     gr_extracted_vdocr = Process_VDOCR(gr_uploaded_file)
@@ -185,23 +184,25 @@ with gr.Blocks(title="NSG", theme=theme, head=head, css=css, analytics_enabled=F
     with gr.Row():
         with gr.Column():
             gr_uploaded_file = gr.File(label="Upload File")
-            gr_file_preview = gr.Image(interactive=False, label="File Preview")
-            gr_extracted_vdocr = gr.Textbox(max_lines=5, interactive=False, label="gr_extracted_vdocr")
-            gr_user_message = gr.Textbox(max_lines=1, interactive=False, label="gr_user_message")
-            gr_field_to_edit = gr.Textbox(max_lines=1, interactive=False, label="gr_field_to_edit")
+            gr_file_preview_1 = gr.Image(interactive=False, visible=False, label="File Preview (IMG, PDF)")
+            gr_file_preview_2 = gr.TextArea(lines=20, interactive=False, visible=False, label="File Preview (TXT, DOC, XLS)")
+            gr_extracted_vdocr = gr.Textbox(max_lines=5, interactive=False, visible=False, label="gr_extracted_vdocr")
+            gr_user_message = gr.Textbox(max_lines=1, interactive=False, visible=False, label="gr_user_message")
+            gr_field_to_edit = gr.Textbox(max_lines=1, interactive=False, visible=False, label="gr_field_to_edit")
         with gr.Column():
             gr_history = gr.Chatbot(type="messages", placeholder="# NSG", group_consecutive_messages=False, container=False)
-            gr_message = gr.MultimodalTextbox(file_count="single", placeholder="Nhập tin nhắn", submit_btn=True, autofocus=True, autoscroll=True, container=False)
+            gr_message = gr.MultimodalTextbox(file_count="single", placeholder="Type your message", submit_btn=True, autofocus=True, autoscroll=True, container=False)
         with gr.Column():
             gr_table = gr.DataFrame(headers=["Vật tư", "Xuất xứ", "Giá trị", "Đơn vị", "Ghi chú vật tư"], show_row_numbers=True)
-            gr_jsonapi = gr.JSON(open=True)
+            gr_jsonapi = gr.JSON(open=True, height="300px", label="JSON for API")
+            gr_send_api_request = gr.Button("Send API Request",variant="primary", size="lg")
 
     # Upload file
     gr.on(
         triggers=[gr_uploaded_file.upload],
         fn=fn_upload_1,
         inputs=[gr_history, gr_uploaded_file],
-        outputs=[gr_history, gr_file_preview],
+        outputs=[gr_history, gr_file_preview_1, gr_file_preview_2],
         show_progress="full"
     ).then(
         fn=fn_upload_2,
