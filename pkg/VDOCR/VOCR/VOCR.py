@@ -78,6 +78,7 @@ def Process_VOCR(img_path, max_seq_length=128, sos_token=1, eos_token=2):
     if isinstance(img_path, str):             img_pil = Image.open(img_path)
     elif isinstance(img_path, np.ndarray):    img_pil = Image.fromarray(cv2.cvtColor(img_path, cv2.COLOR_BGR2RGB))
     elif isinstance(img_path, Image.Image):   img_pil = img_path
+    elif img_path == None:                    return ""
     else:                                     raise ValueError("⚠️ VOCR > Not image path, PIL image, or OpenCV image")
     
     # Process input

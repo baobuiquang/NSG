@@ -183,6 +183,7 @@ def Process_POCR(img_path, padding_ratio=0.3):
     if isinstance(img_path, str):             img_ocv = cv2.imread(img_path)
     elif isinstance(img_path, Image.Image):   img_ocv = cv2.cvtColor(np.array(img_path), cv2.COLOR_RGB2BGR)
     elif isinstance(img_path, np.ndarray):    img_ocv = img_path
+    elif img_path == None:                    return []
     else:                                     raise ValueError("⚠️ POCR > Not image path, PIL image, or OpenCV image")
 
     pocr_obboxs = list(POCR_DET(img_ocv))

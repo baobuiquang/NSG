@@ -20,7 +20,7 @@ def split_filepath(filepath):
     directory, file_with_ext = os.path.split(filepath)
     filename, extension = os.path.splitext(file_with_ext)
     extension = extension.lstrip('.')
-    return {"directory": directory, "filename": filename, "extension": extension}
+    return {"directory": directory, "filename": filename, "extension": extension.lower()}
 
 # ====================================================================================================
 # ====================================================================================================
@@ -105,64 +105,66 @@ def show_ocv_multiple(list_imgs, list_titles=None):
 # ====================================================================================================
 # ====================================================================================================
 
-def preprocess_document_image(img_ocv):
+def prepimg_contrast(img_ocv, goal_brightness=0.925):
     import numpy as np
     import cv2
+    def get_brightness(img_ocv):
+        b, g, r = cv2.split(img_ocv.astype(np.float32) / 255.0)
+        brightness = np.mean(0.2126 * r + 0.7152 * g + 0.0722 * b)
+        return round(float(brightness), 3)
+    while get_brightness(img_ocv) < goal_brightness:
+        img_ocv = cv2.convertScaleAbs(img_ocv, alpha=1.05, beta=0)
+    return img_ocv
 
-    def prepimg_contrast(img_ocv, goal_brightness=0.925):
-        def get_brightness(img_ocv):
-            b, g, r = cv2.split(img_ocv.astype(np.float32) / 255.0)
-            brightness = np.mean(0.2126 * r + 0.7152 * g + 0.0722 * b)
-            return round(float(brightness), 3)
-        while get_brightness(img_ocv) < goal_brightness:
-            img_ocv = cv2.convertScaleAbs(img_ocv, alpha=1.05, beta=0)
-        return img_ocv
+def prepimg_resize(img_ocv, width=None, height=None):
+    import cv2
+    if width is None and height is None:
+        raise ValueError("At least one of width or height must be specified.")
+    (h, w) = img_ocv.shape[:2]
+    # If only width is provided
+    if height is None:
+        ratio = width / float(w)
+        dimension = (width, int(h * ratio))
+    # If only height is provided
+    elif width is None:
+        ratio = height / float(h)
+        dimension = (int(w * ratio), height)
+    # If both width and height are provided
+    else:
+        dimension = (width, height)
+    return cv2.resize(img_ocv, dimension, interpolation=cv2.INTER_LANCZOS4)
 
-    def prepimg_resize(img_ocv, width=None, height=None):
-        if width is None and height is None:
-            raise ValueError("At least one of width or height must be specified.")
-        (h, w) = img_ocv.shape[:2]
-        # If only width is provided
-        if height is None:
-            ratio = width / float(w)
-            dimension = (width, int(h * ratio))
-        # If only height is provided
-        elif width is None:
-            ratio = height / float(h)
-            dimension = (int(w * ratio), height)
-        # If both width and height are provided
-        else:
-            dimension = (width, height)
-        return cv2.resize(img_ocv, dimension, interpolation=cv2.INTER_LANCZOS4)
+def prepimg_denoise(img_ocv):
+    import cv2
+    return cv2.bilateralFilter(img_ocv, d=5, sigmaColor=35, sigmaSpace=35) # 9/75/75 -> 5/35/35
 
-    def prepimg_denoise(img_ocv):
-        return cv2.bilateralFilter(img_ocv, d=5, sigmaColor=35, sigmaSpace=35) # 9/75/75 -> 5/35/35
+def prepimg_cropblank(img_ocv, blank_pixel_keep=32):
+    import cv2
+    _, thresh = cv2.threshold(cv2.cvtColor(img_ocv, cv2.COLOR_BGR2GRAY), 128, 255, cv2.THRESH_BINARY)
+    h, w = thresh.shape
+    blank_x1 = 0
+    blank_x2 = w
+    blank_y1 = 0
+    blank_y2 = h
+    for c in range(0, w, 1):
+        if set([r[c] for r in thresh]) != {255}:
+            blank_x1 = max(c-blank_pixel_keep, 0)
+            break
+    for c in range(w-1, 0, -1):
+        if set([r[c] for r in thresh]) != {255}:
+            blank_x2 = min(c+blank_pixel_keep, w)
+            break
+    for r in range(0, h, 1):
+        if set(thresh[r]) != {255}:
+            blank_y1 = max(r-blank_pixel_keep, 0)
+            break
+    for r in range(h-1, 0, -1):
+        if set(thresh[r]) != {255}:
+            blank_y2 = min(r+blank_pixel_keep, h)
+            break
+    return img_ocv[blank_y1:blank_y2, blank_x1:blank_x2]
 
-    def prepimg_cropblank(img_ocv, blank_pixel_keep=32):
-        _, thresh = cv2.threshold(cv2.cvtColor(img_ocv, cv2.COLOR_BGR2GRAY), 128, 255, cv2.THRESH_BINARY)
-        h, w = thresh.shape
-        blank_x1 = 0
-        blank_x2 = w
-        blank_y1 = 0
-        blank_y2 = h
-        for c in range(0, w, 1):
-            if set([r[c] for r in thresh]) != {255}:
-                blank_x1 = max(c-blank_pixel_keep, 0)
-                break
-        for c in range(w-1, 0, -1):
-            if set([r[c] for r in thresh]) != {255}:
-                blank_x2 = min(c+blank_pixel_keep, w)
-                break
-        for r in range(0, h, 1):
-            if set(thresh[r]) != {255}:
-                blank_y1 = max(r-blank_pixel_keep, 0)
-                break
-        for r in range(h-1, 0, -1):
-            if set(thresh[r]) != {255}:
-                blank_y2 = min(r+blank_pixel_keep, h)
-                break
-        return img_ocv[blank_y1:blank_y2, blank_x1:blank_x2]
-
+def preprocess_document_image(img_ocv):
     img_ocv = prepimg_denoise(img_ocv)
     img_ocv = prepimg_contrast(img_ocv)
     img_ocv = prepimg_cropblank(img_ocv)
