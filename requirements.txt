@@ -9,3 +9,7 @@ matplotlib
 pillow
 
 onnxruntime
+
+python-docx
+openpyxl
+pymupdf
