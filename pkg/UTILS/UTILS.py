@@ -1,3 +1,9 @@
+FILE_EXTENSION_PDF = ["pdf"]
+FILE_EXTENSION_IMG = ["png", "jpg", "jpeg", "jpe", "jp2", "bmp", "dib", "tif", "tiff", "webp", "pbm", "pgm", "ppm", "pnm", "pfm", "sr", "ras", "exr", "hdr", "pic"]
+FILE_EXTENSION_XLS = ["xlsx", "xlsm", "xltm", "xltx"]
+FILE_EXTENSION_DOC = ["docx"]
+FILE_EXTENSION_TXT = ["txt", "md", "log", "csv", "tsv", "json", "xml", "html", "htm", "yaml", "yml", "cfg", "ini"]
+
 # ====================================================================================================
 # ====================================================================================================
 # ====================================================================================================

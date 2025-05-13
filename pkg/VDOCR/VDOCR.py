@@ -23,12 +23,6 @@ from pymupdf import Document as Document_Parser_PDF
 from openpyxl import load_workbook as Document_Parser_XLS
 from docx import Document as Document_Parser_DOC
 
-FILE_EXTENSION_PDF = ["pdf"]
-FILE_EXTENSION_IMG = ["png", "jpg", "jpeg", "jpe", "jp2", "bmp", "dib", "tif", "tiff", "webp", "pbm", "pgm", "ppm", "pnm", "pfm", "sr", "ras", "exr", "hdr", "pic"]
-FILE_EXTENSION_XLS = ["xlsx", "xlsm", "xltm", "xltx"]
-FILE_EXTENSION_DOC = ["docx"]
-FILE_EXTENSION_TXT = ["txt", "md", "log", "csv", "tsv", "json", "xml", "html", "htm", "yaml", "yml", "cfg", "ini"]
-
 # ====================================================================================================
 # ====================================================================================================
 # ====================================================================================================
@@ -186,7 +180,7 @@ def VDOCR_DOC(filepath):
 def VDOCR_IMG_PDF(filepath):
     # -------------------- img_ocv & PDF_parser_support
     PDF_parser_support = None
-    if UTILS.split_filepath(filepath)['extension'] in FILE_EXTENSION_PDF:
+    if UTILS.split_filepath(filepath)['extension'] in UTILS.FILE_EXTENSION_PDF:
         PDF2IMG_ZOOM = 4.0
         with Document_Parser_PDF(filepath) as PDF_document:
             if len(PDF_document) > 1:
@@ -205,7 +199,7 @@ def VDOCR_IMG_PDF(filepath):
                 else:
                     print(f"⚠️ VDOCR > Warning: PDF is not digital > Force OCR")
                     PDF_parser_support = None
-    elif UTILS.split_filepath(filepath)['extension'] in FILE_EXTENSION_IMG:
+    elif UTILS.split_filepath(filepath)['extension'] in UTILS.FILE_EXTENSION_IMG:
         img_ocv = cv2.imread(filepath)
         img_ocv = UTILS.preprocess_document_image(img_ocv)
     else:
@@ -294,15 +288,15 @@ def VDOCR_IMG_PDF(filepath):
 # ====================================================================================================
 
 def Process_VDOCR(filepath):
-    if UTILS.split_filepath(filepath)['extension'] in FILE_EXTENSION_PDF:
+    if UTILS.split_filepath(filepath)['extension'] in UTILS.FILE_EXTENSION_PDF:
         return VDOCR_IMG_PDF(filepath)
-    elif UTILS.split_filepath(filepath)['extension'] in FILE_EXTENSION_IMG:
+    elif UTILS.split_filepath(filepath)['extension'] in UTILS.FILE_EXTENSION_IMG:
         return VDOCR_IMG_PDF(filepath)
-    elif UTILS.split_filepath(filepath)['extension'] in FILE_EXTENSION_TXT:
+    elif UTILS.split_filepath(filepath)['extension'] in UTILS.FILE_EXTENSION_TXT:
         return VDOCR_TXT(filepath)
-    elif UTILS.split_filepath(filepath)['extension'] in FILE_EXTENSION_DOC:
+    elif UTILS.split_filepath(filepath)['extension'] in UTILS.FILE_EXTENSION_DOC:
         return VDOCR_DOC(filepath)
-    elif UTILS.split_filepath(filepath)['extension'] in FILE_EXTENSION_XLS:
+    elif UTILS.split_filepath(filepath)['extension'] in UTILS.FILE_EXTENSION_XLS:
         return VDOCR_XLS(filepath)
     else:
         raise ValueError(f"⚠️ VDOCR > *.{UTILS.split_filepath(filepath)['extension']} > File type not supported")

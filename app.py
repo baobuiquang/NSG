@@ -122,9 +122,32 @@ def scan_jsonapi(gr_jsonapi):
 
 # ====================================================================================================
 
-def fn_upload(gr_history, gr_uploaded_file):
-    gr_history += [{"role": "assistant", "content": f"Bạn đã tải lên file:"}]
-    gr_history += [{"role": "assistant", "content": gr.File(gr_uploaded_file)}]
+def fn_upload_1(gr_history, gr_uploaded_file):
+    gr_history += [{"role": "user", "content": gr.File(gr_uploaded_file)}]
+    # ---------- Just turn file into image preview
+    gr_file_preview = None
+    if UTILS.split_filepath(gr_uploaded_file)['extension'] in UTILS.FILE_EXTENSION_IMG:
+        gr_file_preview = gr_uploaded_file
+    elif UTILS.split_filepath(gr_uploaded_file)['extension'] in UTILS.FILE_EXTENSION_PDF:
+        from pymupdf import Document as Document_Parser_PDF
+        PDF2IMG_ZOOM = 4.0
+        with Document_Parser_PDF(gr_uploaded_file) as PDF_document:
+            if len(PDF_document) > 1:
+                raise ValueError("⚠️ VDOCR > Multiple-pages PDF not supported yet")
+            else:
+                page = PDF_document[0]
+                img_ocv = UTILS.pil_2_ocv(page.get_pixmap(dpi=int(72*PDF2IMG_ZOOM)).pil_image())
+        gr_file_preview = img_ocv
+    elif UTILS.split_filepath(gr_uploaded_file)['extension'] in UTILS.FILE_EXTENSION_TXT:
+        gr_file_preview = None
+    elif UTILS.split_filepath(gr_uploaded_file)['extension'] in UTILS.FILE_EXTENSION_DOC:
+        gr_file_preview = None
+    elif UTILS.split_filepath(gr_uploaded_file)['extension'] in UTILS.FILE_EXTENSION_XLS:
+        gr_file_preview = None
+    # ---------- 
+    return gr_history, gr_file_preview
+
+def fn_upload_2(gr_history, gr_uploaded_file):
     gr_extracted_vdocr = Process_VDOCR(gr_uploaded_file)
     gr_jsonapi = llm_1_extract_jsonapi(gr_extracted_vdocr)
     gr_table = [[e['Vật tư'], e['Xuất xứ'], e['Khối lượng - Số lượng']['Giá trị'], e['Khối lượng - Số lượng']['Đơn vị'], e['Ghi chú vật tư']] for e in gr_jsonapi['Danh sách vật tư']]
@@ -161,7 +184,8 @@ def fn_chat_2(gr_history, gr_user_message, gr_jsonapi, gr_field_to_edit):
 with gr.Blocks(title="NSG", theme=theme, head=head, css=css, analytics_enabled=False, fill_height=True, fill_width=True) as demo:
     with gr.Row():
         with gr.Column():
-            gr_uploaded_file = gr.File()
+            gr_uploaded_file = gr.File(label="Upload File")
+            gr_file_preview = gr.Image(interactive=False, label="File Preview")
             gr_extracted_vdocr = gr.Textbox(max_lines=5, interactive=False, label="gr_extracted_vdocr")
             gr_user_message = gr.Textbox(max_lines=1, interactive=False, label="gr_user_message")
             gr_field_to_edit = gr.Textbox(max_lines=1, interactive=False, label="gr_field_to_edit")
@@ -175,7 +199,12 @@ with gr.Blocks(title="NSG", theme=theme, head=head, css=css, analytics_enabled=F
     # Upload file
     gr.on(
         triggers=[gr_uploaded_file.upload],
-        fn=fn_upload,
+        fn=fn_upload_1,
+        inputs=[gr_history, gr_uploaded_file],
+        outputs=[gr_history, gr_file_preview],
+        show_progress="full"
+    ).then(
+        fn=fn_upload_2,
         inputs=[gr_history, gr_uploaded_file],
         outputs=[gr_history, gr_extracted_vdocr, gr_jsonapi, gr_table, gr_field_to_edit],
         show_progress="full"
