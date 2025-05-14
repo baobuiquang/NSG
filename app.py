@@ -95,6 +95,28 @@ css = """
 * { -ms-overflow-style: none; scrollbar-width: none; }
 *::-webkit-scrollbar { display: none; }
 footer { display: none !important; }
+
+#gr_column_mid {
+    height: 90vh !important;
+}
+
+#gr_history {
+    flex-grow: 1 !important;
+}
+
+#gr_message textarea {
+    font-size: 1rem !important;
+}
+
+#gr_message button.upload-button {
+    display: none !important;
+}
+
+#gr_message button.submit-button {
+    height: 32px !important;
+    width: 32px !important;
+    border-radius: 8px !important;
+}
 """
 
 # ====================================================================================================
@@ -104,27 +126,28 @@ def scan_jsonapi(gr_jsonapi):
         bot_msg = ""
         field_to_edit = ""
         if str(e1['Vật tư']).strip() == "-1":
-            bot_msg = f"✍️ Tên của vật tư thứ {i1+1}:"
+            bot_msg = f"## ✍️\nTên của vật tư thứ {i1+1}?"
             field_to_edit = f"gr_jsonapi['Danh sách vật tư'][{i1}]['Vật tư']"
         elif str(e1['Xuất xứ']).strip() == "-1":
-            bot_msg = f"✍️ Xuất xứ của vật tư thứ {i1+1} ({e1['Vật tư']}):"
+            bot_msg = f"## ✍️\nXuất xứ của vật tư thứ {i1+1} ({e1['Vật tư']})?"
             field_to_edit = f"gr_jsonapi['Danh sách vật tư'][{i1}]['Xuất xứ']"
         elif str(e1['Khối lượng - Số lượng']['Đơn vị']).strip() == "-1":
-            bot_msg = f"✍️ Đơn vị của vật tư thứ {i1+1} ({e1['Vật tư']}):"
+            bot_msg = f"## ✍️\nĐơn vị của vật tư thứ {i1+1} ({e1['Vật tư']})?"
             field_to_edit = f"gr_jsonapi['Danh sách vật tư'][{i1}]['Khối lượng - Số lượng']['Đơn vị']"
         elif str(e1['Khối lượng - Số lượng']['Giá trị']).strip() == "-1":
-            bot_msg = f"✍️ Giá trị của vật tư thứ {i1+1} ({e1['Vật tư']}):"
+            bot_msg = f"## ✍️\nGiá trị của vật tư thứ {i1+1} ({e1['Vật tư']})?"
             field_to_edit = f"gr_jsonapi['Danh sách vật tư'][{i1}]['Khối lượng - Số lượng']['Giá trị']"
         if bot_msg != "":
             break
     return {
-        "bot_msg": bot_msg if bot_msg != "" else "💬 Bạn có muốn chỉnh sửa gì thêm?",
+        "bot_msg": bot_msg if bot_msg != "" else "## 💬\nBạn có muốn chỉnh sửa gì thêm?",
         "field_to_edit": field_to_edit
     }
 
 # ====================================================================================================
 
 def fn_upload_1(gr_history, gr_uploaded_file):
+    gr_history += [{"role": "user", "content": "Tải lên tập tin:"}]
     gr_history += [{"role": "user", "content": gr.File(gr_uploaded_file)}]
     # ---------- Just turn file into image preview
     gr_file_preview_1 = None
@@ -172,7 +195,7 @@ def fn_chat_2(gr_history, gr_user_message, gr_jsonapi, gr_field_to_edit):
     else:
         gr_jsonapi_new = llm_2_edit_jsonapi(gr_user_message, gr_jsonapi)
         if gr_jsonapi == gr_jsonapi_new:
-            gr_history += [{"role": "assistant", "content": "📄 Không chỉnh sửa\n💬 Bạn có muốn chỉnh sửa gì thêm?"}]
+            gr_history += [{"role": "assistant", "content": "📄 Chưa có chỉnh sửa mới\n💬 Bạn có muốn chỉnh sửa gì thêm?"}]
         else:
             gr_history += [{"role": "assistant", "content": "📝 Chỉnh sửa hoàn thành\n💬 Bạn có muốn chỉnh sửa gì thêm?"}]
         gr_jsonapi = gr_jsonapi_new
@@ -180,22 +203,37 @@ def fn_chat_2(gr_history, gr_user_message, gr_jsonapi, gr_field_to_edit):
     gr_table = [[e['Vật tư'], e['Xuất xứ'], e['Khối lượng - Số lượng']['Giá trị'], e['Khối lượng - Số lượng']['Đơn vị'], e['Ghi chú vật tư']] for e in gr_jsonapi['Danh sách vật tư']]
     return gr_history, gr_jsonapi, gr_table, gr_field_to_edit
 
+def fn_send_api_request():
+    return gr.Info("Hiện tại chưa có API kết nối với http://test.thepnamsaigon.com", duration=5)
+
 with gr.Blocks(title="NSG", theme=theme, head=head, css=css, analytics_enabled=False, fill_height=True, fill_width=True) as demo:
     with gr.Row():
         with gr.Column():
-            gr_uploaded_file = gr.File(label="Upload File")
-            gr_file_preview_1 = gr.Image(interactive=False, visible=False, label="File Preview (IMG, PDF)")
-            gr_file_preview_2 = gr.TextArea(lines=20, interactive=False, visible=False, label="File Preview (TXT, DOC, XLS)")
+            gr_uploaded_file = gr.File(label="Tải lên tập tin")
+            gr_file_preview_1 = gr.Image(interactive=False, visible=False, label="Tập tin (IMG, PDF)")
+            gr_file_preview_2 = gr.TextArea(lines=20, interactive=False, visible=False, label="Tập tin (TXT, DOC, XLS)")
             gr_extracted_vdocr = gr.Textbox(max_lines=5, interactive=False, visible=False, label="gr_extracted_vdocr")
             gr_user_message = gr.Textbox(max_lines=1, interactive=False, visible=False, label="gr_user_message")
             gr_field_to_edit = gr.Textbox(max_lines=1, interactive=False, visible=False, label="gr_field_to_edit")
-        with gr.Column():
-            gr_history = gr.Chatbot(type="messages", placeholder="# NSG", group_consecutive_messages=False, container=False)
-            gr_message = gr.MultimodalTextbox(file_count="single", placeholder="Type your message", submit_btn=True, autofocus=True, autoscroll=True, container=False)
+        with gr.Column(elem_id="gr_column_mid"):
+            gr_history = gr.Chatbot(elem_id="gr_history", type="messages", placeholder="# NSG", group_consecutive_messages=False, container=True,
+                label="Chatbot hỗ trợ tạo đơn hàng",
+                value=[{"role": "assistant", "content": """
+                        ### Bước 1:
+                        Tải lên tập tin -> Chờ hoàn thành tải lên
+                        ### Bước 2:
+                        Lần lượt trả lời các câu hỏi trong khung chat này
+                        * Biểu tượng ✍️ -> Trả lời chính xác
+                        * Biểu tượng 💬 -> Chat bằng ngôn ngữ tự nhiên thường ngày
+                        ### Bước 3:
+                        Khi đã ưng ý -> Tạo đơn hàng
+                        """}]
+            )
+            gr_message = gr.MultimodalTextbox(elem_id="gr_message", file_count="single", placeholder="Nhập tin nhắn", submit_btn=True, autofocus=True, autoscroll=True, container=False)
         with gr.Column():
             gr_table = gr.DataFrame(headers=["Vật tư", "Xuất xứ", "Giá trị", "Đơn vị", "Ghi chú vật tư"], show_row_numbers=True)
-            gr_jsonapi = gr.JSON(open=True, height="300px", label="JSON for API")
-            gr_send_api_request = gr.Button("Send API Request",variant="primary", size="lg")
+            gr_jsonapi = gr.JSON(open=True, height="300px", label="Thông tin đơn hàng")
+            gr_send_api_request = gr.Button("Tạo đơn hàng",variant="primary", size="lg")
 
     # Upload file
     gr.on(
@@ -222,6 +260,14 @@ with gr.Blocks(title="NSG", theme=theme, head=head, css=css, analytics_enabled=F
         inputs=[gr_history, gr_user_message, gr_jsonapi, gr_field_to_edit],
         outputs=[gr_history, gr_jsonapi, gr_table, gr_field_to_edit],
         show_progress="hidden"
+    )
+    # Button Send API Request
+    gr.on(
+        triggers=[gr_send_api_request.click],
+        fn=fn_send_api_request,
+        inputs=[],
+        outputs=[],
+        show_progress="full"
     )
 
 # ====================================================================================================
