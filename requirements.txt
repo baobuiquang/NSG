@@ -1,11 +1,11 @@
-ipykernel
-ipywidgets
+# ipykernel
+# ipywidgets
+# matplotlib
 
 requests
 gradio
 
 opencv-python-headless
-matplotlib
 pillow
 
 onnxruntime

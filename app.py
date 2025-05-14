@@ -273,4 +273,4 @@ with gr.Blocks(title="NSG", theme=theme, head=head, css=css, analytics_enabled=F
 # ====================================================================================================
 
 if __name__ == "__main__":
-    demo.launch(server_port=1234)
+    demo.launch(server_name="0.0.0.0", server_port=1759)
