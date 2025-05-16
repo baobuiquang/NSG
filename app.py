@@ -1,3 +1,6 @@
+import gradio as gr
+import csv
+
 # ====================================================================================================
 
 import pkg.UTILS.UTILS as UTILS
@@ -82,8 +85,6 @@ Nếu bạn không hiểu yêu cầu của người dùng, chỉ cần trả v�
 
 # ====================================================================================================
 
-import gradio as gr
-
 theme = gr.themes.Base(
     primary_hue="teal", secondary_hue="neutral", neutral_hue="neutral",
     font=[gr.themes.GoogleFont('Inter')], font_mono=[gr.themes.GoogleFont('Ubuntu Mono')]
@@ -91,9 +92,9 @@ theme = gr.themes.Base(
 head = """
 <link rel="icon" href="https://cdn.jsdelivr.net/gh/OneLevelStudio/CORE/static/favicon.png">
 """
+# * { -ms-overflow-style: none; scrollbar-width: none; }
+# *::-webkit-scrollbar { display: none; }
 css = """
-* { -ms-overflow-style: none; scrollbar-width: none; }
-*::-webkit-scrollbar { display: none; }
 footer { display: none !important; }
 
 #gr_column_mid {
@@ -122,27 +123,56 @@ footer { display: none !important; }
 # ====================================================================================================
 
 def scan_jsonapi(gr_jsonapi):
+    bot_msg = ""
+    field_to_edit = ""
     for i1, e1 in enumerate(gr_jsonapi['Danh sách vật tư']):
-        bot_msg = ""
-        field_to_edit = ""
         if str(e1['Khối lượng - Số lượng']['Giá trị']).strip() == "-1":
             bot_msg = f"## ✍️\nGiá trị của vật tư thứ {i1+1} ({e1['Vật tư']})?"
             field_to_edit = f"gr_jsonapi['Danh sách vật tư'][{i1}]['Khối lượng - Số lượng']['Giá trị']"
         if str(e1['Khối lượng - Số lượng']['Đơn vị']).strip() == "-1":
             bot_msg = f"## ✍️\nĐơn vị của vật tư thứ {i1+1} ({e1['Vật tư']})?"
             field_to_edit = f"gr_jsonapi['Danh sách vật tư'][{i1}]['Khối lượng - Số lượng']['Đơn vị']"
-        # if str(e1['Xuất xứ']).strip() == "-1":
-        #     bot_msg = f"## ✍️\nXuất xứ của vật tư thứ {i1+1} ({e1['Vật tư']})?"
-        #     field_to_edit = f"gr_jsonapi['Danh sách vật tư'][{i1}]['Xuất xứ']"
-        # if str(e1['Vật tư']).strip() == "-1":
-        #     bot_msg = f"## ✍️\nTên của vật tư thứ {i1+1}?"
-        #     field_to_edit = f"gr_jsonapi['Danh sách vật tư'][{i1}]['Vật tư']"
-        if bot_msg != "":
+        if str(e1['Xuất xứ']).strip() == "-1":
+            bot_msg = f"## ✍️\nXuất xứ của vật tư thứ {i1+1} ({e1['Vật tư']})?"
+            field_to_edit = f"gr_jsonapi['Danh sách vật tư'][{i1}]['Xuất xứ']"
+        if bot_msg != "" and field_to_edit != "":
             break
     return {
         "bot_msg": bot_msg if bot_msg != "" else "## 💬\nBạn có muốn chỉnh sửa gì thêm?",
         "field_to_edit": field_to_edit
     }
+
+
+with open('static/knowledge_sanphams.csv', mode='r', newline='', encoding='utf-8') as f:
+    KNOWLEDGE_SANPHAMS = [e for e in csv.DictReader(f)]
+def vattu_og_info_str_2_ls_possible_manoibo(vattu_og_info_str):
+    # Example: "D8VASCB240T -1" -> ['VAS8C', 'VAS8C4']
+    vattu_og_info_str = vattu_og_info_str.lower()
+    # vattu_info
+    vattu_info = { "macthep": None, "duongkinh": None, "hinhdang": None, "xuatxu": None }
+    for e in list(set([e['macthep'].lower() for e in KNOWLEDGE_SANPHAMS])):
+        if e in vattu_og_info_str:
+            vattu_info['macthep'] = e
+    for e in list(set([e['duongkinh'].lower() for e in KNOWLEDGE_SANPHAMS])):
+        if e in vattu_og_info_str:
+            vattu_info['duongkinh'] = e
+    for e in list(set([e['hinhdang'].lower() for e in KNOWLEDGE_SANPHAMS])):
+        if e in vattu_og_info_str:
+            vattu_info['hinhdang'] = e
+    for e1 in list(set([e['xuatxu'].lower() for e in KNOWLEDGE_SANPHAMS])):
+        for e2 in e1.split(" | "):
+            if e2 in vattu_og_info_str:
+                vattu_info['xuatxu'] = e1
+    # Filter knowledge_sanphams by vattu_info
+    possible_sanphams = []
+    for e in KNOWLEDGE_SANPHAMS:
+        if e['macthep'].lower()==vattu_info['macthep'] or vattu_info['macthep']==None:
+            if e['duongkinh'].lower()==vattu_info['duongkinh'] or vattu_info['duongkinh']==None:
+                if e['hinhdang'].lower()==vattu_info['hinhdang'] or vattu_info['hinhdang']==None:
+                    if e['xuatxu'].lower()==vattu_info['xuatxu'] or vattu_info['xuatxu']==None:
+                        possible_sanphams.append(e)
+    ls_possible_manoibo = [e['manoibo'] for e in possible_sanphams]
+    return ls_possible_manoibo
 
 # ====================================================================================================
 
@@ -172,7 +202,13 @@ def fn_upload_1(gr_history, gr_uploaded_file):
 def fn_upload_2(gr_history, gr_uploaded_file):
     gr_extracted_vdocr = Process_VDOCR(gr_uploaded_file)
     gr_jsonapi = llm_1_extract_jsonapi(gr_extracted_vdocr)
-    gr_table = [[e['Vật tư'], e['Xuất xứ'], e['Khối lượng - Số lượng']['Giá trị'], e['Khối lượng - Số lượng']['Đơn vị'], e['Ghi chú vật tư']] for e in gr_jsonapi['Danh sách vật tư']]
+
+    for i, vattu_og in enumerate(gr_jsonapi['Danh sách vật tư']):
+        vattu_og_info_str = f"{vattu_og['Vật tư']} {vattu_og['Xuất xứ']}"
+        ls_possible_manoibo = vattu_og_info_str_2_ls_possible_manoibo(vattu_og_info_str)
+        gr_jsonapi['Danh sách vật tư'][i]['MANOIBO'] = ls_possible_manoibo
+
+    gr_table = [[e['Vật tư'], e['Xuất xứ'], e['Khối lượng - Số lượng']['Giá trị'], e['Khối lượng - Số lượng']['Đơn vị'], e['Ghi chú vật tư'], e['MANOIBO']] for e in gr_jsonapi['Danh sách vật tư']]
     scan_res = scan_jsonapi(gr_jsonapi)
     gr_field_to_edit = scan_res['field_to_edit']
     gr_history += [{"role": "assistant", "content": scan_res['bot_msg']}]
@@ -200,7 +236,7 @@ def fn_chat_2(gr_history, gr_user_message, gr_jsonapi, gr_field_to_edit):
             gr_history += [{"role": "assistant", "content": "📝 Chỉnh sửa hoàn thành\n💬 Bạn có muốn chỉnh sửa gì thêm?"}]
         gr_jsonapi = gr_jsonapi_new
     # ----------------------------------------------------
-    gr_table = [[e['Vật tư'], e['Xuất xứ'], e['Khối lượng - Số lượng']['Giá trị'], e['Khối lượng - Số lượng']['Đơn vị'], e['Ghi chú vật tư']] for e in gr_jsonapi['Danh sách vật tư']]
+    gr_table = [[e['Vật tư'], e['Xuất xứ'], e['Khối lượng - Số lượng']['Giá trị'], e['Khối lượng - Số lượng']['Đơn vị'], e['Ghi chú vật tư'], e['MANOIBO']] for e in gr_jsonapi['Danh sách vật tư']]
     return gr_history, gr_jsonapi, gr_table, gr_field_to_edit
 
 def fn_send_api_request():
@@ -214,7 +250,7 @@ with gr.Blocks(title="NSG", theme=theme, head=head, css=css, analytics_enabled=F
             gr_file_preview_2 = gr.TextArea(lines=20, interactive=False, visible=False, label="Tập tin (TXT, DOC, XLS)")
             gr_extracted_vdocr = gr.Textbox(max_lines=5, interactive=False, visible=False, label="gr_extracted_vdocr")
             gr_user_message = gr.Textbox(max_lines=1, interactive=False, visible=False, label="gr_user_message")
-            gr_field_to_edit = gr.Textbox(max_lines=1, interactive=False, visible=False, label="gr_field_to_edit")
+            gr_field_to_edit = gr.Textbox(max_lines=1, interactive=False, visible=True, label="gr_field_to_edit")
         with gr.Column(elem_id="gr_column_mid", scale=3):
             gr_history = gr.Chatbot(elem_id="gr_history", type="messages", placeholder="# NSG", group_consecutive_messages=False, container=True,
                 label="Chatbot hỗ trợ tạo đơn hàng",
@@ -231,7 +267,7 @@ with gr.Blocks(title="NSG", theme=theme, head=head, css=css, analytics_enabled=F
             )
             gr_message = gr.MultimodalTextbox(elem_id="gr_message", file_count="single", placeholder="Nhập tin nhắn", submit_btn=True, autofocus=True, autoscroll=True, container=False)
         with gr.Column(scale=4):
-            gr_table = gr.DataFrame(headers=["Vật tư", "Xuất xứ", "Giá trị", "Đơn vị", "Ghi chú vật tư"], show_row_numbers=True)
+            gr_table = gr.DataFrame(headers=["Vật tư", "Xuất xứ", "Giá trị", "Đơn vị", "Ghi chú vật tư", "MANOIBO"], show_row_numbers=True)
             gr_jsonapi = gr.JSON(open=True, height="300px", label="Thông tin đơn hàng")
             gr_send_api_request = gr.Button("Tạo đơn hàng",variant="primary", size="lg")
 
