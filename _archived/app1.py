@@ -94,12 +94,12 @@ head = """
 """
 # * { -ms-overflow-style: none; scrollbar-width: none; }
 # *::-webkit-scrollbar { display: none; }
-# #gr_column_mid {
-#     height: 90vh !important;
-# }
 css = """
 footer { display: none !important; }
 
+#gr_column_mid {
+    height: 90vh !important;
+}
 
 #gr_history {
     flex-grow: 1 !important;

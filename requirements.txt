@@ -2,8 +2,8 @@
 # ipywidgets
 # matplotlib
 
+gradio==5.29.0
 requests
-gradio
 
 opencv-python-headless
 pillow
