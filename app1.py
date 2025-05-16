@@ -94,12 +94,12 @@ head = """
 """
 # * { -ms-overflow-style: none; scrollbar-width: none; }
 # *::-webkit-scrollbar { display: none; }
+# #gr_column_mid {
+#     height: 90vh !important;
+# }
 css = """
 footer { display: none !important; }
 
-#gr_column_mid {
-    height: 90vh !important;
-}
 
 #gr_history {
     flex-grow: 1 !important;
@@ -123,22 +123,22 @@ footer { display: none !important; }
 # ====================================================================================================
 
 def scan_jsonapi(gr_jsonapi):
-    bot_msg = ""
+    bot_msg = {"role": "assistant", "content": ""}
     field_to_edit = ""
     for i1, e1 in enumerate(gr_jsonapi['Danh sách vật tư']):
         if str(e1['Khối lượng - Số lượng']['Giá trị']).strip() == "-1":
-            bot_msg = f"## ✍️\nGiá trị của vật tư thứ {i1+1} ({e1['Vật tư']})?"
+            bot_msg["content"] = f"## ✍️\nGiá trị của vật tư thứ {i1+1} ({e1['Vật tư']})?"
             field_to_edit = f"gr_jsonapi['Danh sách vật tư'][{i1}]['Khối lượng - Số lượng']['Giá trị']"
         if str(e1['Khối lượng - Số lượng']['Đơn vị']).strip() == "-1":
-            bot_msg = f"## ✍️\nĐơn vị của vật tư thứ {i1+1} ({e1['Vật tư']})?"
+            bot_msg["content"] = f"## ✍️\nĐơn vị của vật tư thứ {i1+1} ({e1['Vật tư']})?"
             field_to_edit = f"gr_jsonapi['Danh sách vật tư'][{i1}]['Khối lượng - Số lượng']['Đơn vị']"
         if str(e1['Xuất xứ']).strip() == "-1":
-            bot_msg = f"## ✍️\nXuất xứ của vật tư thứ {i1+1} ({e1['Vật tư']})?"
+            bot_msg["content"] = f"## ✍️\nXuất xứ của vật tư thứ {i1+1} ({e1['Vật tư']})?"
             field_to_edit = f"gr_jsonapi['Danh sách vật tư'][{i1}]['Xuất xứ']"
-        if bot_msg != "" and field_to_edit != "":
+        if bot_msg["content"] != "" and field_to_edit != "":
             break
     return {
-        "bot_msg": bot_msg if bot_msg != "" else "## 💬\nBạn có muốn chỉnh sửa gì thêm?",
+        "bot_msg": bot_msg if bot_msg["content"] != "" else {"role": "assistant", "content": "## 💬\nBạn có muốn chỉnh sửa gì thêm?"},
         "field_to_edit": field_to_edit
     }
 
@@ -211,7 +211,7 @@ def fn_upload_2(gr_history, gr_uploaded_file):
     gr_table = [[e['Vật tư'], e['Xuất xứ'], e['Khối lượng - Số lượng']['Giá trị'], e['Khối lượng - Số lượng']['Đơn vị'], e['Ghi chú vật tư'], e['MANOIBO']] for e in gr_jsonapi['Danh sách vật tư']]
     scan_res = scan_jsonapi(gr_jsonapi)
     gr_field_to_edit = scan_res['field_to_edit']
-    gr_history += [{"role": "assistant", "content": scan_res['bot_msg']}]
+    gr_history += [scan_res['bot_msg']]
     return gr_history, gr_extracted_vdocr, gr_jsonapi, gr_table, gr_field_to_edit
 
 def fn_chat_1(gr_history, gr_message):
@@ -226,7 +226,7 @@ def fn_chat_2(gr_history, gr_user_message, gr_jsonapi, gr_field_to_edit):
         exec(f"{gr_field_to_edit} = '{gr_user_message}'")
         scan_res = scan_jsonapi(gr_jsonapi)
         gr_field_to_edit = scan_res['field_to_edit']
-        gr_history += [{"role": "assistant", "content": scan_res['bot_msg']}]
+        gr_history += [scan_res['bot_msg']]
     # ---------- Case 2: gr_field_to_edit is "" ----------
     else:
         gr_jsonapi_new = llm_2_edit_jsonapi(gr_user_message, gr_jsonapi)
