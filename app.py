@@ -125,18 +125,18 @@ def scan_jsonapi(gr_jsonapi):
     for i1, e1 in enumerate(gr_jsonapi['Danh sách vật tư']):
         bot_msg = ""
         field_to_edit = ""
-        if str(e1['Vật tư']).strip() == "-1":
-            bot_msg = f"## ✍️\nTên của vật tư thứ {i1+1}?"
-            field_to_edit = f"gr_jsonapi['Danh sách vật tư'][{i1}]['Vật tư']"
-        elif str(e1['Xuất xứ']).strip() == "-1":
-            bot_msg = f"## ✍️\nXuất xứ của vật tư thứ {i1+1} ({e1['Vật tư']})?"
-            field_to_edit = f"gr_jsonapi['Danh sách vật tư'][{i1}]['Xuất xứ']"
-        elif str(e1['Khối lượng - Số lượng']['Đơn vị']).strip() == "-1":
-            bot_msg = f"## ✍️\nĐơn vị của vật tư thứ {i1+1} ({e1['Vật tư']})?"
-            field_to_edit = f"gr_jsonapi['Danh sách vật tư'][{i1}]['Khối lượng - Số lượng']['Đơn vị']"
-        elif str(e1['Khối lượng - Số lượng']['Giá trị']).strip() == "-1":
+        if str(e1['Khối lượng - Số lượng']['Giá trị']).strip() == "-1":
             bot_msg = f"## ✍️\nGiá trị của vật tư thứ {i1+1} ({e1['Vật tư']})?"
             field_to_edit = f"gr_jsonapi['Danh sách vật tư'][{i1}]['Khối lượng - Số lượng']['Giá trị']"
+        if str(e1['Khối lượng - Số lượng']['Đơn vị']).strip() == "-1":
+            bot_msg = f"## ✍️\nĐơn vị của vật tư thứ {i1+1} ({e1['Vật tư']})?"
+            field_to_edit = f"gr_jsonapi['Danh sách vật tư'][{i1}]['Khối lượng - Số lượng']['Đơn vị']"
+        # if str(e1['Xuất xứ']).strip() == "-1":
+        #     bot_msg = f"## ✍️\nXuất xứ của vật tư thứ {i1+1} ({e1['Vật tư']})?"
+        #     field_to_edit = f"gr_jsonapi['Danh sách vật tư'][{i1}]['Xuất xứ']"
+        # if str(e1['Vật tư']).strip() == "-1":
+        #     bot_msg = f"## ✍️\nTên của vật tư thứ {i1+1}?"
+        #     field_to_edit = f"gr_jsonapi['Danh sách vật tư'][{i1}]['Vật tư']"
         if bot_msg != "":
             break
     return {
@@ -208,14 +208,14 @@ def fn_send_api_request():
 
 with gr.Blocks(title="NSG", theme=theme, head=head, css=css, analytics_enabled=False, fill_height=True, fill_width=True) as demo:
     with gr.Row():
-        with gr.Column():
+        with gr.Column(scale=2):
             gr_uploaded_file = gr.File(label="Tải lên tập tin")
             gr_file_preview_1 = gr.Image(interactive=False, visible=False, label="Tập tin (IMG, PDF)")
             gr_file_preview_2 = gr.TextArea(lines=20, interactive=False, visible=False, label="Tập tin (TXT, DOC, XLS)")
             gr_extracted_vdocr = gr.Textbox(max_lines=5, interactive=False, visible=False, label="gr_extracted_vdocr")
             gr_user_message = gr.Textbox(max_lines=1, interactive=False, visible=False, label="gr_user_message")
             gr_field_to_edit = gr.Textbox(max_lines=1, interactive=False, visible=False, label="gr_field_to_edit")
-        with gr.Column(elem_id="gr_column_mid"):
+        with gr.Column(elem_id="gr_column_mid", scale=3):
             gr_history = gr.Chatbot(elem_id="gr_history", type="messages", placeholder="# NSG", group_consecutive_messages=False, container=True,
                 label="Chatbot hỗ trợ tạo đơn hàng",
                 value=[{"role": "assistant", "content": """
@@ -230,7 +230,7 @@ with gr.Blocks(title="NSG", theme=theme, head=head, css=css, analytics_enabled=F
                         """}]
             )
             gr_message = gr.MultimodalTextbox(elem_id="gr_message", file_count="single", placeholder="Nhập tin nhắn", submit_btn=True, autofocus=True, autoscroll=True, container=False)
-        with gr.Column():
+        with gr.Column(scale=4):
             gr_table = gr.DataFrame(headers=["Vật tư", "Xuất xứ", "Giá trị", "Đơn vị", "Ghi chú vật tư"], show_row_numbers=True)
             gr_jsonapi = gr.JSON(open=True, height="300px", label="Thông tin đơn hàng")
             gr_send_api_request = gr.Button("Tạo đơn hàng",variant="primary", size="lg")
@@ -273,4 +273,5 @@ with gr.Blocks(title="NSG", theme=theme, head=head, css=css, analytics_enabled=F
 # ====================================================================================================
 
 if __name__ == "__main__":
+    print("> http://localhost:1759")
     demo.launch(server_name="0.0.0.0", server_port=1759)
