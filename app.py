@@ -3,6 +3,7 @@ from pkg.LLM.LLM import Process_LLM
 import pkg.UTILS.UTILS as UTILS
 import gradio as gr
 import csv
+import re
 
 # ====================================================================================================
 # ====================================================================================================
@@ -62,7 +63,7 @@ Nếu trường thông tin bị thiếu, không rõ ràng, hoặc không đượ
 """.strip()
     return UTILS.str2dict_advanced(Process_LLM(prompt_1))
 
-def llm_2_edit_jsonapi(gr_usertext, gr_donhang_json):
+def llm_2_edit_gr_donhang_json(gr_donhang_json, gr_usertext):
     prompt_2 = f"""
 Bạn sẽ được cung cấp: (1) JSON dữ liệu, và (2) Yêu cầu của người dùng.
 Nhiệm vụ của bạn là: (3) Chỉnh sửa JSON dữ liệu theo yêu cầu của người dùng.
@@ -136,7 +137,8 @@ def gr_donhang_json_2_gr_donhang_table(gr_donhang_json):
 
 theme = gr.themes.Base(
     primary_hue="teal", secondary_hue="neutral", neutral_hue="neutral",
-    font=[gr.themes.GoogleFont('Inter')], font_mono=[gr.themes.GoogleFont('Ubuntu Mono')]
+    font=[gr.themes.GoogleFont('Inter')], font_mono=[gr.themes.GoogleFont('JetBrains Mono')],
+    radius_size=gr.themes.sizes.radius_lg
 )
 head = """
 <link rel="icon" href="https://cdn.jsdelivr.net/gh/OneLevelStudio/CORE/static/favicon.png">
@@ -153,6 +155,25 @@ footer { display: none !important; }
     width: 32px !important;
     border-radius: 8px !important;
 }
+#gr_history .message {
+    padding: 12px 16px;
+    box-shadow: none;
+    margin-top: 8px;
+}
+
+#gr_history .options button.option {
+    font-size: 1rem;
+    font-weight: 600;
+    padding: 12px 0;
+    border: none;
+    color: var(--button-primary-text-color);
+    background: var(--button-primary-background-fill);
+}
+#gr_history .options button.option:hover {
+    background: var(--button-primary-background-fill-hover);
+}
+
+.toast-body.info { background: white; }
 """
 
 # ====================================================================================================
@@ -160,13 +181,14 @@ footer { display: none !important; }
 # ====================================================================================================
 
 # Chat Init
-def fn_chat_1(gr_history, gr_message):
-    gr_history += [{"role": "user", "content": str(gr_message)}]
+def fn_chat_1(gr_history, gr_message, gr_flag_llm2):
+    gr_history += [{"role": "user", "content": gr_message['text']}]
     if len(gr_message['files']) == 0:
         gr_userfile = ""
     else:
         gr_userfile = gr_message['files'][0]
-    return gr_history, "", gr_message['text'], gr_userfile
+        gr_flag_llm2 = "FALSE"
+    return gr_history, "", gr_message['text'], gr_userfile, gr_flag_llm2
 
 # A. Upload file: Preview File
 def fn_chat_2(gr_history, gr_preview_1, gr_preview_2, gr_userfile):
@@ -183,11 +205,11 @@ def fn_chat_2(gr_history, gr_preview_1, gr_preview_2, gr_userfile):
                     raise ValueError("⚠️ VDOCR > Multiple-pages PDF not supported yet")
                 else:
                     page = PDF_document[0]
-                    img_ocv = UTILS.pil_2_ocv(page.get_pixmap(dpi=int(72*PDF2IMG_ZOOM)).pil_image())
-            gr_preview_1 = gr.Image(img_ocv, visible=True)
+                    img_pil = page.get_pixmap(dpi=int(72*PDF2IMG_ZOOM)).pil_image()
+            gr_preview_1 = gr.Image(img_pil, visible=True)
         elif UTILS.split_filepath(gr_userfile)['extension'] in UTILS.FILE_EXTENSION_TXT + UTILS.FILE_EXTENSION_DOC + UTILS.FILE_EXTENSION_XLS:
             gr_preview_2 = gr.TextArea(Process_VDOCR(gr_userfile), visible=True)
-        gr_history += [{"role": "assistant", "content": "Đang xử lý văn bản..."}]
+        gr_history += [{"role": "assistant", "content": "⏳ Đang đọc văn bản..."}]
     return gr_history, gr_preview_1, gr_preview_2
 
 # A. Upload file: VDOCR + LLM1
@@ -197,12 +219,13 @@ def fn_chat_3(gr_history, gr_vdocrtext, gr_donhang_json, gr_donhang_table, gr_us
         gr_donhang_json = llm_1_extract_gr_donhang_json(gr_vdocrtext)
         gr_donhang_json = add_possible_manoibos(gr_donhang_json)
         gr_donhang_table = gr_donhang_json_2_gr_donhang_table(gr_donhang_json)
-        gr_history += [{"role": "assistant", "content": "✔️ Đã xử lý xong văn bản"}]
+        gr_history += [{"role": "assistant", "content": "✔️ Đã hoàn thành đọc văn bản"}]
     return gr_history, gr_vdocrtext, gr_donhang_json, gr_donhang_table, ""
 
-def fn_chat_4(gr_history, gr_donhang_json, gr_donhang_table):
+# B. MANOIBO
+def fn_chat_4(gr_history, gr_donhang_json, gr_donhang_table, gr_flag_llm2):
     if gr_donhang_json == None:
-        gr_history += [{"role": "assistant", "content": "Hãy tải lên tập tin"}]
+        gr_history += [{"role": "assistant", "content": "📤 Mời bạn tải lên tập tin (IMG, PDF, DOCX, XLSX, TXT)"}]
     else:
         _flag_manoibo_need_select = False
         for i, vattu in enumerate(gr_donhang_json['Danh sách vật tư']):
@@ -211,19 +234,36 @@ def fn_chat_4(gr_history, gr_donhang_json, gr_donhang_table):
                     gr_donhang_json['Danh sách vật tư'][i]['manoibo'] = vattu['possiblemanoibos'][0]
                     gr_donhang_table = gr_donhang_json_2_gr_donhang_table(gr_donhang_json)
                 else:
-                    _content = f"✍️ Mã nội bộ của vật tư thứ {i+1} ({vattu['Vật tư']}) là gì?"
+                    _content = f"## 📋\nMã nội bộ của vật tư thứ {i+1} ({vattu['Vật tư']}) là gì?"
                     _options = [{"label": e, "value": f"gr_donhang_json['Danh sách vật tư'][{i}]['manoibo'] = '{e}'"} for e in vattu['possiblemanoibos']]
                     gr_history += [{"role": "assistant", "content": _content, "options": _options}]
                     _flag_manoibo_need_select = True
                     break
         if _flag_manoibo_need_select == False:
-            gr_history += [{"role": "assistant", "content": "☑️ Đã đầy đủ mã nội bộ của tất cả vật tư"}]
-    return gr_history, gr_donhang_json, gr_donhang_table
+            if gr_flag_llm2 != "TRUE":
+                gr_flag_llm2 = "TRUE"
+                gr_history += [{"role": "assistant", "content": "✔️ Đã đầy đủ mã nội bộ của tất cả vật tư"}]
+                gr_history += [{"role": "assistant", "content": "## 💬\nBạn có muốn chỉnh sửa gì thêm?"}]
+    return gr_history, gr_donhang_json, gr_donhang_table, gr_flag_llm2
 
+def fn_chat_5(gr_history, gr_flag_llm2, gr_donhang_json, gr_donhang_table, gr_usertext):
+    if gr_flag_llm2 == "TRUE":
+        gr_donhang_json_new = llm_2_edit_gr_donhang_json(gr_donhang_json, gr_usertext)
+        if gr_donhang_json == gr_donhang_json_new:
+            gr_history += [{"role": "assistant", "content": "📄 Chưa có chỉnh sửa mới"}]
+            gr_history += [{"role": "assistant", "content": "## 💬\nBạn có muốn chỉnh sửa gì thêm?"}]
+        else:
+            gr_history += [{"role": "assistant", "content": "📝 Chỉnh sửa hoàn thành"}]
+            gr_history += [{"role": "assistant", "content": "## 💬\nBạn có muốn chỉnh sửa gì thêm?"}]
+        gr_donhang_json = gr_donhang_json_new
+        gr_donhang_table = gr_donhang_json_2_gr_donhang_table(gr_donhang_json)
+    return gr_history, gr_flag_llm2, gr_donhang_json, gr_donhang_table
+
+# Select option
 def fn_select_option_manoibo(gr_history, gr_donhang_json, gr_donhang_table, evt: gr.SelectData):
     exec(evt.value)
     gr_donhang_table = gr_donhang_json_2_gr_donhang_table(gr_donhang_json)
-    gr_history += [{"role": "assistant", "content": "✔️ Đã lựa chọn mã nội bộ"}]
+    gr_history += [{"role": "user", "content": re.search(r"'([^']*)'$", evt.value).group(1)}] # "gr_donhang_json['Danh sách vật tư'][0]['manoibo'] = 'VAS6C4'" -> "VAS6C4"
     return gr_history, gr_donhang_json, gr_donhang_table
 
 # ====================================================================================================
@@ -233,30 +273,39 @@ def fn_select_option_manoibo(gr_history, gr_donhang_json, gr_donhang_table, evt:
 with gr.Blocks(title="NSG", theme=theme, head=head, css=css, analytics_enabled=False, fill_height=True, fill_width=True) as demo:
     with gr.Row():
         with gr.Column(scale=2):
-            gr_preview_1 = gr.Image(interactive=False, visible=False, label="Tập tin")
-            gr_preview_2 = gr.TextArea(lines=20, interactive=False, visible=False, label="Tập tin")
             gr_vdocrtext = gr.Textbox(max_lines=5, interactive=False, visible=False, label="gr_vdocrtext")
             gr_userfile  = gr.Textbox(max_lines=1, interactive=False, visible=False, label="gr_userfile")
             gr_usertext  = gr.Textbox(max_lines=1, interactive=False, visible=False, label="gr_usertext")
+            gr_flag_llm2  = gr.Textbox(max_lines=1, interactive=False, visible=False, label="gr_flag_llm2")
+            gr_preview_1 = gr.Image(interactive=False, visible=False, label="Tập tin")
+            gr_preview_2 = gr.TextArea(lines=20, interactive=False, visible=False, label="Tập tin")
         with gr.Column(scale=3, elem_id="gr_column_mid"):
             gr_history = gr.Chatbot(
                 elem_id="gr_history", type="messages", group_consecutive_messages=False, container=True, label="Chatbot hỗ trợ tạo đơn hàng",
-                value=[{"role": "assistant", "content": """Placeholder"""}]
+                value=[{"role": "assistant", "content": """
+                        **Bước 1:** Tải lên tập tin 
+                        
+                        **Bước 2:** Tương tác với chatbot
+                        - Biểu tượng 📋 -> Lựa chọn 1 trong các gợi ý của chatbot
+                        - Biểu tượng 💬 -> Chat bằng ngôn ngữ tự nhiên thường ngày
+                        
+                        **Bước 3:** Khi đã ưng ý -> Nhấn nút "Tạo đơn hàng"                
+                        """}]
             )
             gr_message = gr.MultimodalTextbox(
                 elem_id="gr_message", file_count="single", placeholder="Nhập tin nhắn", submit_btn=True, autofocus=True, autoscroll=True, container=False
             )
         with gr.Column(scale=3):
             gr_donhang_table = gr.DataFrame(headers=['Mã nội bộ', 'Vật tư', 'Xuất xứ', 'Giá trị', 'Đơn vị', 'Ghi chú'], show_row_numbers=True, interactive=False)
-            gr_donhang_json  = gr.JSON(open=True, height="200px", label="Thông tin đơn hàng")
             gr_send_button   = gr.Button("Tạo đơn hàng", variant="primary", size="lg")
+            gr_donhang_json  = gr.JSON(open=True, height="300px", visible=False, label="Thông tin đơn hàng")
     
     # Chat
     gr.on(
         triggers=gr_message.submit,
         fn=fn_chat_1,
-        inputs=[gr_history, gr_message],
-        outputs=[gr_history, gr_message, gr_usertext, gr_userfile],
+        inputs=[gr_history, gr_message, gr_flag_llm2],
+        outputs=[gr_history, gr_message, gr_usertext, gr_userfile, gr_flag_llm2],
         show_progress="hidden"
     ).then(
         fn=fn_chat_2,
@@ -270,8 +319,13 @@ with gr.Blocks(title="NSG", theme=theme, head=head, css=css, analytics_enabled=F
         show_progress="hidden"
     ).then(
         fn=fn_chat_4,
-        inputs=[gr_history, gr_donhang_json, gr_donhang_table],
-        outputs=[gr_history, gr_donhang_json, gr_donhang_table],
+        inputs=[gr_history, gr_donhang_json, gr_donhang_table, gr_flag_llm2],
+        outputs=[gr_history, gr_donhang_json, gr_donhang_table, gr_flag_llm2],
+        show_progress="hidden"
+    ).then(
+        fn=fn_chat_5,
+        inputs=[gr_history, gr_flag_llm2, gr_donhang_json, gr_donhang_table, gr_usertext],
+        outputs=[gr_history, gr_flag_llm2, gr_donhang_json, gr_donhang_table],
         show_progress="hidden"
     )
 
@@ -284,17 +338,21 @@ with gr.Blocks(title="NSG", theme=theme, head=head, css=css, analytics_enabled=F
         show_progress="hidden"
     ).then(
         fn=fn_chat_4,
-        inputs=[gr_history, gr_donhang_json, gr_donhang_table],
-        outputs=[gr_history, gr_donhang_json, gr_donhang_table],
+        inputs=[gr_history, gr_donhang_json, gr_donhang_table, gr_flag_llm2],
+        outputs=[gr_history, gr_donhang_json, gr_donhang_table, gr_flag_llm2],
         show_progress="hidden"
     )
 
     # Send button
+    def fn_send_button(gr_donhang_json):
+        gr.Info("Hiện tại chưa có API kết nối đến http://test.thepnamsaigon.com", duration=10)
+        gr_donhang_json = gr.JSON(visible=True)
+        return gr_donhang_json
     gr.on(
         triggers=[gr_send_button.click],
-        fn=lambda: gr.Info("Hiện tại chưa có API kết nối đến http://test.thepnamsaigon.com", duration=5),
-        inputs=[],
-        outputs=[],
+        fn=fn_send_button,
+        inputs=[gr_donhang_json],
+        outputs=[gr_donhang_json],
         show_progress="full"
     )
 
