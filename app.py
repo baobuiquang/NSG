@@ -129,7 +129,13 @@ def add_possible_manoibos(gr_donhang_json):
     return gr_donhang_json
 
 def gr_donhang_json_2_gr_donhang_table(gr_donhang_json):
-    return [[e['manoibo'], e['Vật tư'], e['Xuất xứ'], e['Khối lượng - Số lượng']['Giá trị'], e['Khối lượng - Số lượng']['Đơn vị'], e['Ghi chú vật tư']] for e in gr_donhang_json['Danh sách vật tư']]
+    gr_donhang_table = [[e['manoibo'], e['Vật tư'], e['Xuất xứ'], e['Khối lượng - Số lượng']['Giá trị'], e['Khối lượng - Số lượng']['Đơn vị'], e['Ghi chú vật tư']] for e in gr_donhang_json['Danh sách vật tư']]
+    gr_donhang_header = f"""
+### Thông tin đơn hàng
+- **Khách hàng:** {gr_donhang_json['Khách hàng']['Tên']}
+- **Ghi chú chung:** {gr_donhang_json['Ghi chú chung']}
+"""
+    return gr_donhang_table, gr_donhang_header
 
 # ====================================================================================================
 # ====================================================================================================
@@ -182,12 +188,13 @@ footer { display: none !important; }
 
 # Chat Init
 def fn_chat_1(gr_history, gr_message, gr_flag_llm2):
-    gr_history += [{"role": "user", "content": gr_message['text']}]
     if len(gr_message['files']) == 0:
+        gr_history += [{"role": "user", "content": gr_message['text']}]
         gr_userfile = ""
     else:
         gr_userfile = gr_message['files'][0]
         gr_flag_llm2 = "FALSE"
+        gr_history += [{"role": "user", "content": gr.File(gr_userfile)}]
     return gr_history, "", gr_message['text'], gr_userfile, gr_flag_llm2
 
 # A. Upload file: Preview File
@@ -213,17 +220,17 @@ def fn_chat_2(gr_history, gr_preview_1, gr_preview_2, gr_userfile):
     return gr_history, gr_preview_1, gr_preview_2
 
 # A. Upload file: VDOCR + LLM1
-def fn_chat_3(gr_history, gr_vdocrtext, gr_donhang_json, gr_donhang_table, gr_userfile):
+def fn_chat_3(gr_history, gr_vdocrtext, gr_donhang_json, gr_donhang_table, gr_donhang_header, gr_userfile):
     if gr_userfile != "":
         gr_vdocrtext = Process_VDOCR(gr_userfile)
         gr_donhang_json = llm_1_extract_gr_donhang_json(gr_vdocrtext)
         gr_donhang_json = add_possible_manoibos(gr_donhang_json)
-        gr_donhang_table = gr_donhang_json_2_gr_donhang_table(gr_donhang_json)
+        gr_donhang_table, gr_donhang_header = gr_donhang_json_2_gr_donhang_table(gr_donhang_json)
         gr_history += [{"role": "assistant", "content": "✔️ Đã hoàn thành đọc văn bản"}]
-    return gr_history, gr_vdocrtext, gr_donhang_json, gr_donhang_table, ""
+    return gr_history, gr_vdocrtext, gr_donhang_json, gr_donhang_table, gr_donhang_header, ""
 
 # B. MANOIBO
-def fn_chat_4(gr_history, gr_donhang_json, gr_donhang_table, gr_flag_llm2):
+def fn_chat_4(gr_history, gr_donhang_json, gr_donhang_table, gr_donhang_header, gr_flag_llm2):
     if gr_donhang_json == None:
         gr_history += [{"role": "assistant", "content": "📤 Mời bạn tải lên tập tin (IMG, PDF, DOCX, XLSX, TXT)"}]
     else:
@@ -232,7 +239,7 @@ def fn_chat_4(gr_history, gr_donhang_json, gr_donhang_table, gr_flag_llm2):
             if vattu['manoibo'] == None:
                 if len(vattu['possiblemanoibos']) == 1:
                     gr_donhang_json['Danh sách vật tư'][i]['manoibo'] = vattu['possiblemanoibos'][0]
-                    gr_donhang_table = gr_donhang_json_2_gr_donhang_table(gr_donhang_json)
+                    gr_donhang_table, gr_donhang_header = gr_donhang_json_2_gr_donhang_table(gr_donhang_json)
                 else:
                     _content = f"## 📋\nMã nội bộ của vật tư thứ {i+1} ({vattu['Vật tư']}) là gì?"
                     _options = [{"label": e, "value": f"gr_donhang_json['Danh sách vật tư'][{i}]['manoibo'] = '{e}'"} for e in vattu['possiblemanoibos']]
@@ -244,9 +251,9 @@ def fn_chat_4(gr_history, gr_donhang_json, gr_donhang_table, gr_flag_llm2):
                 gr_flag_llm2 = "TRUE"
                 gr_history += [{"role": "assistant", "content": "✔️ Đã đầy đủ mã nội bộ của tất cả vật tư"}]
                 gr_history += [{"role": "assistant", "content": "## 💬\nBạn có muốn chỉnh sửa gì thêm?"}]
-    return gr_history, gr_donhang_json, gr_donhang_table, gr_flag_llm2
+    return gr_history, gr_donhang_json, gr_donhang_table, gr_donhang_header, gr_flag_llm2
 
-def fn_chat_5(gr_history, gr_flag_llm2, gr_donhang_json, gr_donhang_table, gr_usertext):
+def fn_chat_5(gr_history, gr_flag_llm2, gr_donhang_json, gr_donhang_table, gr_donhang_header, gr_usertext):
     if gr_flag_llm2 == "TRUE":
         gr_donhang_json_new = llm_2_edit_gr_donhang_json(gr_donhang_json, gr_usertext)
         if gr_donhang_json == gr_donhang_json_new:
@@ -256,15 +263,15 @@ def fn_chat_5(gr_history, gr_flag_llm2, gr_donhang_json, gr_donhang_table, gr_us
             gr_history += [{"role": "assistant", "content": "📝 Chỉnh sửa hoàn thành"}]
             gr_history += [{"role": "assistant", "content": "## 💬\nBạn có muốn chỉnh sửa gì thêm?"}]
         gr_donhang_json = gr_donhang_json_new
-        gr_donhang_table = gr_donhang_json_2_gr_donhang_table(gr_donhang_json)
-    return gr_history, gr_flag_llm2, gr_donhang_json, gr_donhang_table
+        gr_donhang_table, gr_donhang_header = gr_donhang_json_2_gr_donhang_table(gr_donhang_json)
+    return gr_history, gr_flag_llm2, gr_donhang_json, gr_donhang_table, gr_donhang_header
 
 # Select option
-def fn_select_option_manoibo(gr_history, gr_donhang_json, gr_donhang_table, evt: gr.SelectData):
+def fn_select_option_manoibo(gr_history, gr_donhang_json, gr_donhang_table, gr_donhang_header, evt: gr.SelectData):
     exec(evt.value)
-    gr_donhang_table = gr_donhang_json_2_gr_donhang_table(gr_donhang_json)
+    gr_donhang_table, gr_donhang_header = gr_donhang_json_2_gr_donhang_table(gr_donhang_json)
     gr_history += [{"role": "user", "content": re.search(r"'([^']*)'$", evt.value).group(1)}] # "gr_donhang_json['Danh sách vật tư'][0]['manoibo'] = 'VAS6C4'" -> "VAS6C4"
-    return gr_history, gr_donhang_json, gr_donhang_table
+    return gr_history, gr_donhang_json, gr_donhang_table, gr_donhang_header
 
 # ====================================================================================================
 # ====================================================================================================
@@ -296,9 +303,11 @@ with gr.Blocks(title="NSG", theme=theme, head=head, css=css, analytics_enabled=F
                 elem_id="gr_message", file_count="single", placeholder="Nhập tin nhắn", submit_btn=True, autofocus=True, autoscroll=True, container=False
             )
         with gr.Column(scale=3):
-            gr_donhang_table = gr.DataFrame(headers=['Mã nội bộ', 'Vật tư', 'Xuất xứ', 'Giá trị', 'Đơn vị', 'Ghi chú'], show_row_numbers=True, interactive=False)
+            with gr.Column(variant="panel"):
+                gr_donhang_header = gr.Markdown("### Thông tin đơn hàng")
+                gr_donhang_table = gr.DataFrame(headers=['Mã nội bộ', 'Vật tư', 'Xuất xứ', 'Giá trị', 'Đơn vị', 'Ghi chú'], show_row_numbers=True, interactive=False)
             gr_send_button   = gr.Button("Tạo đơn hàng", variant="primary", size="lg")
-            gr_donhang_json  = gr.JSON(open=True, height="300px", visible=False, label="Thông tin đơn hàng")
+            gr_donhang_json  = gr.JSON(open=True, height="300px", visible=False, label="Thông tin đơn hàng (JSON)")
     
     # Chat
     gr.on(
@@ -314,18 +323,18 @@ with gr.Blocks(title="NSG", theme=theme, head=head, css=css, analytics_enabled=F
         show_progress="hidden"
     ).then(
         fn=fn_chat_3,
-        inputs=[gr_history, gr_vdocrtext, gr_donhang_json, gr_donhang_table, gr_userfile],
-        outputs=[gr_history, gr_vdocrtext, gr_donhang_json, gr_donhang_table, gr_userfile],
+        inputs=[gr_history, gr_vdocrtext, gr_donhang_json, gr_donhang_table, gr_donhang_header, gr_userfile],
+        outputs=[gr_history, gr_vdocrtext, gr_donhang_json, gr_donhang_table, gr_donhang_header, gr_userfile],
         show_progress="hidden"
     ).then(
         fn=fn_chat_4,
-        inputs=[gr_history, gr_donhang_json, gr_donhang_table, gr_flag_llm2],
-        outputs=[gr_history, gr_donhang_json, gr_donhang_table, gr_flag_llm2],
+        inputs=[gr_history, gr_donhang_json, gr_donhang_table, gr_donhang_header, gr_flag_llm2],
+        outputs=[gr_history, gr_donhang_json, gr_donhang_table, gr_donhang_header, gr_flag_llm2],
         show_progress="hidden"
     ).then(
         fn=fn_chat_5,
-        inputs=[gr_history, gr_flag_llm2, gr_donhang_json, gr_donhang_table, gr_usertext],
-        outputs=[gr_history, gr_flag_llm2, gr_donhang_json, gr_donhang_table],
+        inputs=[gr_history, gr_flag_llm2, gr_donhang_json, gr_donhang_table, gr_donhang_header, gr_usertext],
+        outputs=[gr_history, gr_flag_llm2, gr_donhang_json, gr_donhang_table, gr_donhang_header],
         show_progress="hidden"
     )
 
@@ -333,13 +342,13 @@ with gr.Blocks(title="NSG", theme=theme, head=head, css=css, analytics_enabled=F
     gr.on(
         triggers=gr_history.option_select,
         fn=fn_select_option_manoibo,
-        inputs=[gr_history, gr_donhang_json, gr_donhang_table],
-        outputs=[gr_history, gr_donhang_json, gr_donhang_table],
+        inputs=[gr_history, gr_donhang_json, gr_donhang_table, gr_donhang_header],
+        outputs=[gr_history, gr_donhang_json, gr_donhang_table, gr_donhang_header],
         show_progress="hidden"
     ).then(
         fn=fn_chat_4,
-        inputs=[gr_history, gr_donhang_json, gr_donhang_table, gr_flag_llm2],
-        outputs=[gr_history, gr_donhang_json, gr_donhang_table, gr_flag_llm2],
+        inputs=[gr_history, gr_donhang_json, gr_donhang_table, gr_donhang_header, gr_flag_llm2],
+        outputs=[gr_history, gr_donhang_json, gr_donhang_table, gr_donhang_header, gr_flag_llm2],
         show_progress="hidden"
     )
 
@@ -353,7 +362,7 @@ with gr.Blocks(title="NSG", theme=theme, head=head, css=css, analytics_enabled=F
         fn=fn_send_button,
         inputs=[gr_donhang_json],
         outputs=[gr_donhang_json],
-        show_progress="full"
+        show_progress="hidden"
     )
 
 # ====================================================================================================
@@ -363,3 +372,8 @@ with gr.Blocks(title="NSG", theme=theme, head=head, css=css, analytics_enabled=F
 if __name__ == "__main__":
     print("> http://localhost:1759")
     demo.launch(server_name="0.0.0.0", server_port=1759)
+
+
+
+
+# TODO: 🍌 bỏ cái posiblemanoibos ra khỏi json trước khi feed vào llm 2
