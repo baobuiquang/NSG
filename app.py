@@ -251,7 +251,7 @@ def fn_chat_2(gr_history, gr_chat_next, gr_donhang_json, gr_donhang_table, gr_do
         raise ValueError("⚠️ > fn_chat_2 > gr_chat_next is not TRUE/FALSE")
     return gr_history, gr_chat_next, gr_donhang_json, gr_donhang_table, gr_donhang_header, gr_manoibo_edit_id
 
-def fn_chat_3(gr_history, gr_chat_next, gr_manoibo_edit_id, gr_donhang_json):
+def fn_chat_3(gr_history, gr_chat_next, gr_manoibo_edit_id, gr_donhang_json, gr_donhang_table, gr_donhang_header):
     if gr_donhang_json != None:
         _flag_full_manoibo = True
         for i, vattu in enumerate(gr_donhang_json['Danh sách vật tư']):
@@ -260,13 +260,15 @@ def fn_chat_3(gr_history, gr_chat_next, gr_manoibo_edit_id, gr_donhang_json):
                 _flag_full_manoibo = False
                 gr_manoibo_edit_id = i
                 _content = f"## 📋\nMã nội bộ của vật tư thứ {i+1} ({vattu['Vật tư']}) là gì?"
-                _options = [{"label": e, "value": f"gr_donhang_json['Danh sách vật tư'][{i}]['manoibo'] = '{e}'"} for e in vattu['possiblemanoibos']]
+                _options = [{"label": e, "value": f"gr_donhang_json['Danh sách vật tư'][{i}]['manoibo'] = '{e}'"} for e in vattu['possiblemanoibos'][:39]]
                 gr_history += [{"role": "assistant", "content": _content, "options": _options}]
+                gr_donhang_json['Danh sách vật tư'][i]['manoibo'] = "null ✍️"
+                gr_donhang_table, gr_donhang_header = gr_donhang_json_2_gr_donhang_table(gr_donhang_json)
                 break
         if _flag_full_manoibo == True:
             if gr_chat_next == "FALSE":
                 gr_history += [{"role": "assistant", "content": "## 💬\nBạn có muốn chỉnh sửa gì thêm?"}]
-    return gr_history, gr_chat_next, gr_manoibo_edit_id
+    return gr_history, gr_chat_next, gr_manoibo_edit_id, gr_donhang_json, gr_donhang_table, gr_donhang_header
 
 def fn_chat_4(gr_history, gr_chat_next, gr_donhang_json, gr_donhang_table, gr_donhang_header, gr_usertext):
     if gr_chat_next == "FALSE":
@@ -370,8 +372,8 @@ with gr.Blocks(title="NSG", theme=theme, head=head, css=css, analytics_enabled=F
         show_progress="hidden"
     ).then(
         fn=fn_chat_3,
-        inputs=[gr_history, gr_chat_next, gr_manoibo_edit_id, gr_donhang_json],
-        outputs=[gr_history, gr_chat_next, gr_manoibo_edit_id],
+        inputs=[gr_history, gr_chat_next, gr_manoibo_edit_id, gr_donhang_json, gr_donhang_table, gr_donhang_header],
+        outputs=[gr_history, gr_chat_next, gr_manoibo_edit_id, gr_donhang_json, gr_donhang_table, gr_donhang_header],
         show_progress="hidden"
     ).then(
         fn=fn_chat_4,
@@ -394,8 +396,8 @@ with gr.Blocks(title="NSG", theme=theme, head=head, css=css, analytics_enabled=F
         show_progress="hidden"
     ).then(
         fn=fn_chat_3,
-        inputs=[gr_history, gr_chat_next, gr_manoibo_edit_id, gr_donhang_json],
-        outputs=[gr_history, gr_chat_next, gr_manoibo_edit_id],
+        inputs=[gr_history, gr_chat_next, gr_manoibo_edit_id, gr_donhang_json, gr_donhang_table, gr_donhang_header],
+        outputs=[gr_history, gr_chat_next, gr_manoibo_edit_id, gr_donhang_json, gr_donhang_table, gr_donhang_header],
         show_progress="hidden"
     ).then(
         fn=fn_chat_4,
@@ -413,8 +415,8 @@ with gr.Blocks(title="NSG", theme=theme, head=head, css=css, analytics_enabled=F
         show_progress="hidden"
     ).then(
         fn=fn_chat_3,
-        inputs=[gr_history, gr_chat_next, gr_manoibo_edit_id, gr_donhang_json],
-        outputs=[gr_history, gr_chat_next, gr_manoibo_edit_id],
+        inputs=[gr_history, gr_chat_next, gr_manoibo_edit_id, gr_donhang_json, gr_donhang_table, gr_donhang_header],
+        outputs=[gr_history, gr_chat_next, gr_manoibo_edit_id, gr_donhang_json, gr_donhang_table, gr_donhang_header],
         show_progress="hidden"
     ).then(
         fn=fn_chat_4,
