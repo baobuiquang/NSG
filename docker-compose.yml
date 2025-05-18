@@ -1,11 +1,5 @@
 services:
   nsg:
-    # runtime: nvidia
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - capabilities: [gpu]
     build: .
     ports:
       - "1759:1759"
