@@ -2,6 +2,7 @@ from pkg.VDOCR.VDOCR import Process_VDOCR
 from pkg.LLM.LLM import Process_LLM
 import pkg.UTILS.UTILS as UTILS
 import gradio as gr
+import time
 import csv
 import re
 
@@ -160,14 +161,12 @@ footer { display: none !important; }
 #gr_history    { flex-grow: 1 !important; }
 #gr_message textarea { font-size: 1rem !important; }
 
-
-
-
 #gr_message button.submit-button, #gr_message button.upload-button {
     height: 32px !important;
     width: 32px !important;
-    border-radius: 8px !important;
+    border-radius: 6px !important;
 }
+#gr_message button.upload-button { display: none; }
 #gr_history .message {
     padding: 12px 16px;
     box-shadow: none;
@@ -317,7 +316,15 @@ with gr.Blocks(title="NSG", theme=theme, head=head, css=css, analytics_enabled=F
         with gr.Column(scale=3, elem_id="gr_column_mid"):
             gr_history = gr.Chatbot(
                 elem_id="gr_history", type="messages", group_consecutive_messages=False, container=True, label="Chatbot hỗ trợ tạo đơn hàng",
-                value=[{"role": "assistant", "content": """Hello"""}]
+                value=[{"role": "assistant", "content": """
+                        **Bước 1:** Tải lên tập tin 
+                        
+                        **Bước 2:** Tương tác với chatbot
+                        - 📋 -> Chọn 1 trong các gợi ý hoặc trả lời chính xác
+                        - 💬 -> Chat bằng ngôn ngữ tự nhiên thường ngày
+                        
+                        **Bước 3:** Khi đã ưng ý -> Nhấn nút "Tạo đơn hàng" 
+                        """}]
             )
             gr_message = gr.MultimodalTextbox(
                 elem_id="gr_message", file_count="single", placeholder="Nhập tin nhắn", submit_btn=True, autofocus=True, autoscroll=True, container=False
@@ -327,8 +334,9 @@ with gr.Blocks(title="NSG", theme=theme, head=head, css=css, analytics_enabled=F
                 gr_donhang_header = gr.Markdown("### Thông tin đơn hàng")
                 gr_donhang_table  = gr.DataFrame(headers=['Mã nội bộ', 'Vật tư', 'Xuất xứ', 'Giá trị', 'Đơn vị', 'Ghi chú'], show_row_numbers=True, interactive=False)
             gr_send_button        = gr.Button("Tạo đơn hàng", variant="primary", size="lg")
-            gr_donhang_json       = gr.JSON(open=True, height="300px", visible=False, label="Thông tin đơn hàng (JSON)")
+            gr_donhang_json       = gr.JSON(open=True, height="300px", visible=False, label="JSON Result")
 
+    # Upload
     gr.on(
         triggers=gr_userfile.upload,
         fn=fn_upload_1,
@@ -372,6 +380,7 @@ with gr.Blocks(title="NSG", theme=theme, head=head, css=css, analytics_enabled=F
         show_progress="hidden"
     )
 
+    # Chat
     gr.on(
         triggers=gr_message.submit,
         fn=fn_chat_1,
@@ -412,6 +421,28 @@ with gr.Blocks(title="NSG", theme=theme, head=head, css=css, analytics_enabled=F
         inputs=[gr_history, gr_chat_next, gr_donhang_json, gr_donhang_table, gr_donhang_header, gr_usertext],
         outputs=[gr_history, gr_chat_next, gr_donhang_json, gr_donhang_table, gr_donhang_header],
         show_progress="hidden"
+    )
+
+    # Send button
+    def fn_send_1(gr_donhang_json):
+        gr_donhang_json = gr.JSON(visible=True)
+        return gr_donhang_json
+    def fn_send_2(gr_donhang_json):
+        time.sleep(2)
+        gr.Info("Hiện tại chưa có API kết nối đến http://test.thepnamsaigon.com", duration=10)
+        gr_donhang_json = gr.JSON(visible=True)
+        return gr_donhang_json
+    gr.on(
+        triggers=[gr_send_button.click],
+        fn=fn_send_1,
+        inputs=[gr_donhang_json],
+        outputs=[gr_donhang_json],
+        show_progress="hidden"
+    ).then(
+        fn=fn_send_2,
+        inputs=[gr_donhang_json],
+        outputs=[gr_donhang_json],
+        show_progress="full"
     )
 
 # ====================================================================================================
